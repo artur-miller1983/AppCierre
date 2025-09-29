@@ -1,0 +1,13 @@
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+copy . .
+CMD [ "node", "index.js" ]
+
+
+#docker build . -t arturmiller1983/api-cea:v2.6
+#docker run -p 80:3000 arturmiller1983/api-cea:v2.6
+
+#docker login
+#docker push arturmiller1983/api-cea:v2.6

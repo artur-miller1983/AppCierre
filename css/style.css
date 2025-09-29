@@ -1,0 +1,8 @@
+
+.dropdown-menu .dropdown-item:nth-child(1):hover {
+ background-color: #b4a6a636; 
+}
+
+.dropdown-menu .dropdown-item:nth-child(2):hover {
+  background-color: #f7b3b367; 
+}
