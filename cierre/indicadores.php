@@ -1,5 +1,6 @@
 <?php
 require_once(__DIR__ . '/../config.php');
+
 session_start();
 
 if (!isset($_SESSION['strTutor'])) {
@@ -404,7 +405,12 @@ function formatearHoras($decimal)
                     intTipoClase: '<?= $tipoClaseSeleccionado ?>',
                     strPlaca: '<?= $VehiculoSeleccionado ?>'
                 });
-                window.open('exportar.php?' + params.toString(), '_blank');
+
+                //mostrar datos  params por consola js
+                console.log(params);
+
+
+               window.open('../exportar.php?' + params.toString(), '_blank');
             },
             () => {
                 // Si presiona "Cancelar" (opcional)
