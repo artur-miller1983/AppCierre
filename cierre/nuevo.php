@@ -2,31 +2,97 @@
 require_once(__DIR__ . '/../config.php');
 session_start();
 
+
+
+
+
 // Verificar si el usuario está autenticado
 if (isset($_SESSION['strTutor'])) {
-   
+
     $strTutor = $_SESSION['strTutor'];
     $nombreTutor = $_SESSION['strNombres'];
     $strTipo = $_SESSION['strTipo'];
-   
 
-    $dataTipoClases = @file_get_contents(URL_TIPO_CLASES);
-    if ($dataTipoClases !== false) {
-        $tipos = json_decode($dataTipoClases, true);
-    } else {
+    // ============================================
+    // 🔹 Cargar datos de Tipo de Clases con SSL
+    // ============================================
+    // $dataTipoClases = @file_get_contents(URL_TIPO_CLASES);
+    // if ($dataTipoClases !== false) {
+    //     $tipos = json_decode($dataTipoClases, true);
+    // } else {
+    //     $tipos = [];
+    // }  
+
+
+    // ============================================
+    // 🔹 Cargar datos de Tipo de Clases sin SSL
+    // ============================================
+    $ch = curl_init(URL_TIPO_CLASES);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    $responseTipo = curl_exec($ch);
+    if ($responseTipo === false) {
+        echo "<script>console.error('Error al conectar TIPO_CLASES:', " . json_encode(curl_error($ch)) . ");</script>";
         $tipos = [];
-    }
-
-    $dataVehiculos = @file_get_contents(URL_VEHICULOS);
-    if ($dataVehiculos !== false) {
-        $vehiculos = json_decode($dataVehiculos, true);
     } else {
-        $vehiculos = [];
+        $tipos = json_decode($responseTipo, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            echo "<script>console.error('Error al decodificar TIPO_CLASES:', " . json_encode(json_last_error_msg()) . ");</script>";
+            $tipos = [];
+        } else {
+            echo "<script>console.log('Tipos de clase cargados:', " . json_encode($tipos) . ");</script>";
+        }
     }
+    curl_close($ch);
+
+
+
+    // ============================================
+    // 🔹 Cargar datos de Vehículos con SSL
+    // ============================================
+    // $dataVehiculos = @file_get_contents(URL_VEHICULOS);
+    // if ($dataVehiculos !== false) {
+    //     $vehiculos = json_decode($dataVehiculos, true);
+    // } else {
+    //     $vehiculos = [];
+    // }
+
+
+
+    // ============================================
+    // 🔹 Cargar datos de Vehículos sin SSL
+    // ============================================
+    $ch2 = curl_init(URL_VEHICULOS);
+    curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch2, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch2, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch2, CURLOPT_TIMEOUT, 15);
+    $responseVehiculos = curl_exec($ch2);
+    if ($responseVehiculos === false) {
+        echo "<script>console.error('Error al conectar VEHICULOS:', " . json_encode(curl_error($ch2)) . ");</script>";
+        $vehiculos = [];
+    } else {
+        $vehiculos = json_decode($responseVehiculos, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            echo "<script>console.error('Error al decodificar VEHICULOS:', " . json_encode(json_last_error_msg()) . ");</script>";
+            $vehiculos = [];
+        } else {
+            echo "<script>console.log('Vehículos cargados:', " . json_encode($vehiculos) . ");</script>";
+        }
+    }
+    curl_close($ch2);
+
+
+
+
+    $hoy = date("Y-m-d");
+    $ayer = date("Y-m-d", strtotime("-1 day"));
 
     ?>
 
-  <?php include __DIR__ . '/../plantilla/cabecera.php'; ?>
+    <?php include __DIR__ . '/../plantilla/cabecera.php'; ?>
 
     <style>
         html,
@@ -48,8 +114,6 @@ if (isset($_SESSION['strTutor'])) {
         .extra-small {
             display: flex;
         }
-
-
     </style>
 
     <main>
@@ -58,27 +122,26 @@ if (isset($_SESSION['strTutor'])) {
 
             <div class="card mt-3 mb-2">
                 <div class="card-header ">
-                  <i class="fa-solid fa-plus"></i>  Nuevo Cierre
+                    <i class="fa-solid fa-plus"></i> Nuevo Cierre
                 </div>
                 <div class="card-body ">
 
                     <form id="formAgregarClase" name="formAgregarClase" class="mb-3">
-                        <input type="hidden" id="strTutor" name="strTutor" 
-                            value="<?php echo trim($strTutor); ?> " readonly>
+                        <input type="hidden" id="strTutor" name="strTutor" value="<?php echo trim($strTutor); ?> " readonly>
 
                         <div class="form-row">
 
                             <div class="col-md-3">
                                 <label for="dteFecha">Fecha</label>
-                                <input type="date" class="form-control form-control-sm" 
-                                    id="dteFecha" name="dteFecha"
-                                    required value="<?php echo date('Y-m-d'); ?>">
+                                <input type="date" class="form-control form-control-sm" id="dteFecha" name="dteFecha"
+                                    value="<?php echo date('Y-m-d'); ?>" min="<?php echo $ayer; ?>"
+                                    max="<?php echo $hoy; ?>" onkeydown="return false;">
                             </div>
 
 
                             <div class="col-md-6">
                                 <label for="intTipoClase">Tipo Clase</label>
-                                <select name="intTipoClase" class="form-control form-control-sm" id="intTipoClase" required>
+                                <select name="intTipoClase" class="form-control form-control-sm" id="intTipoClase">
                                     <option value="">Seleccione</option>
                                     <?php foreach ($tipos as $tipo): ?>
                                         <option value="<?= $tipo['idTipo'] ?>"><?= htmlspecialchars($tipo['strDescripcion']) ?>
@@ -89,8 +152,7 @@ if (isset($_SESSION['strTutor'])) {
 
                             <div class="col-md-3">
                                 <label for="vehiculo">Vehículo</label>
-                                <select id="vehiculo" name="vehiculo" class="form-control form-control-sm select-vehiculo"
-                                    required>
+                                <select id="vehiculo" name="vehiculo" class="form-control form-control-sm select-vehiculo">
                                     <option value="">Seleccione</option>
                                     <?php foreach ($vehiculos as $vehiculo): ?>
                                         <option value="<?= htmlspecialchars($vehiculo['strPlaca']) ?>">
@@ -113,14 +175,14 @@ if (isset($_SESSION['strTutor'])) {
                             <div class="col-md-3">
                                 <label for="horaInicio">Inicio</label>
                                 <div class="form-group d-flex align-items-center">
-                                    <select class="form-control form-control-sm mr-1" id="horaInicio" required>
+                                    <select class="form-control form-control-sm mr-1" id="horaInicio">
                                         <?php for ($h = 1; $h <= 12; $h++): ?>
                                             <option value="<?= str_pad($h, 2, '0', STR_PAD_LEFT) ?>"><?= $h ?></option>
                                         <?php endfor; ?>
                                     </select>
                                     <input type="number" class="form-control form-control-sm mr-1" id="minInicio" min="0"
-                                        max="59" value="00" required>
-                                    <select class="form-control form-control-sm" id="ampmInicio" required>
+                                        max="59" value="00">
+                                    <select class="form-control form-control-sm" id="ampmInicio">
                                         <option value="AM" selected>AM</option>
                                         <option value="PM">PM</option>
                                     </select>
@@ -131,14 +193,14 @@ if (isset($_SESSION['strTutor'])) {
                             <div class="col-md-3">
                                 <label for="horaFin">Fin</label>
                                 <div class="form-group d-flex align-items-center">
-                                    <select class="form-control form-control-sm mr-1" id="horaFin" required>
+                                    <select class="form-control form-control-sm mr-1" id="horaFin">
                                         <?php for ($h = 1; $h <= 12; $h++): ?>
                                             <option value="<?= str_pad($h, 2, '0', STR_PAD_LEFT) ?>"><?= $h ?></option>
                                         <?php endfor; ?>
                                     </select>
                                     <input type="number" class="form-control form-control-sm mr-1" id="minFin" min="0"
-                                        max="59" value="00" required>
-                                    <select class="form-control form-control-sm" id="ampmFin" required>
+                                        max="59" value="00">
+                                    <select class="form-control form-control-sm" id="ampmFin">
                                         <option value="AM">AM</option>
                                         <option value="PM" selected>PM</option>
                                     </select>
@@ -159,8 +221,9 @@ if (isset($_SESSION['strTutor'])) {
 
                         <div class="form-group d-flex justify-content-end">
                             <button type="submit" class="btn btn-sm btn-outline-success mr-2 mt-2">Guardar</button>
-                            <button type="button" onclick="limpiarFormulario()" class="btn btn-sm btn-outline-secondary mt-2 ">Limpiar</button>
-                            
+                            <button type="button" onclick="limpiarFormulario()"
+                                class="btn btn-sm btn-outline-secondary mt-2 ">Limpiar</button>
+
                         </div>
 
                 </div>
@@ -171,7 +234,7 @@ if (isset($_SESSION['strTutor'])) {
         </div>
 
     </main>
-   <?php include __DIR__ . '/../plantilla/pie.php'; ?>
+    <?php include __DIR__ . '/../plantilla/pie.php'; ?>
 
     <script>
 
@@ -249,26 +312,138 @@ if (isset($_SESSION['strTutor'])) {
         }
 
 
+        // document.getElementById('formAgregarClase').addEventListener('submit', function (e) {
+        //     e.preventDefault();
+
+        //     // Validar fecha ayer/hoy y límite de 10 AM
+        //     if (document.getElementById('dteFecha').value === '') {
+        //         alertify.error('Seleccione la Fecha');
+        //         return;
+        //     } else {
+
+        //         const partes = document.getElementById('dteFecha').value.split("-");
+        //         const fechaSeleccionada = new Date(partes[0], partes[1] - 1, partes[2]); 
+
+        //         const hoy = new Date();
+        //         hoy.setHours(0, 0, 0, 0);
+
+        //         const ayer = new Date(hoy);
+        //         ayer.setDate(hoy.getDate() - 1);
+
+        //         const ahora = new Date();
+        //         const limiteAyer = new Date(hoy);
+        //         limiteAyer.setHours(10, 0, 0, 0); // Hoy a las 10 AM
+
+        //         if (fechaSeleccionada < ayer || fechaSeleccionada > hoy) {
+        //             alertify.error('Solo puede seleccionar ayer o hoy');
+        //             return;
+        //         }
+
+        //         if (fechaSeleccionada.getTime() === ayer.getTime() && ahora > limiteAyer) {
+        //             alertify.error('El día de ayer solo se puede guardar hasta las 10:00 AM de hoy');
+        //             return;
+        //         }
+        //     }
+        //     // Validar campos primero, si hay errores, se sale
+        //     if (document.getElementById('intTipoClase').value === '') {
+        //         alertify.error('Seleccione el tipo de clase');
+        //         return;
+        //     }
+        //     if (document.getElementById('vehiculo').value === '') {
+        //         alertify.error('Seleccione el vehículo');
+        //         return;
+        //     }
+        //     if (document.getElementById('horaInicio').value === '' || document.getElementById('minInicio').value === '' || document.getElementById('ampmInicio').value === '') {
+        //         alertify.error('Seleccione la hora de inicio');
+        //         return;
+        //     }
+        //     if (document.getElementById('horaFin').value === '' || document.getElementById('minFin').value === '' || document.getElementById('ampmFin').value === '') {
+        //         alertify.error('Seleccione la hora de fin');
+        //         return;
+        //     }
+        //     if (document.getElementById('intCantHoras').value === '') {
+        //         alertify.error('Debe seleccionar la cantidad en horas');
+        //         return;
+        //     }
+
+        //     // Mostrar confirmación con alertify.confirm
+        //     alertify.confirm(
+        //         'AVISO',
+        //         '¿ Desea guardar el Cierre ?',
+        //         function () {
+        //             // El usuario aceptó
+        //             enviarDatos();
+        //         },
+        //         function () {
+        //             // El usuario canceló, no hacemos nada
+        //         }
+        //     ).set('labels', { ok: 'Guardar', cancel: 'Cancelar' })
+        // });
         document.getElementById('formAgregarClase').addEventListener('submit', function (e) {
             e.preventDefault();
-            if (document.getElementById('dteFecha').value === '') {
+
+            // ========================
+            // 🔹 Validación de FECHA
+            // ========================
+            const valorFecha = document.getElementById('dteFecha').value;
+            if (valorFecha === '') {
                 alertify.error('Seleccione la Fecha');
+                valorFecha.focus();
                 return;
             }
-            // Validar campos primero, si hay errores, se sale
+
+            // Convertir YYYY-MM-DD a fecha local
+            const partes = valorFecha.split("-");
+            const fechaSeleccionada = new Date(partes[0], partes[1] - 1, partes[2]);
+            fechaSeleccionada.setHours(0, 0, 0, 0);
+
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+
+            const ayer = new Date(hoy);
+            ayer.setDate(hoy.getDate() - 1);
+
+            const ahora = new Date();
+            const limiteAyer = new Date(hoy);
+            limiteAyer.setHours(10, 0, 0, 0); // Hoy a las 10 AM
+
+            // Reglas
+            if (fechaSeleccionada < ayer) {
+                alertify.error('Solo puede seleccionar la fecha de ayer antes de 10:00 AM');
+                return;
+            }
+            else if (fechaSeleccionada > hoy) {
+                alertify.error('Solo puede seleccionar la fecha actual');
+                return;
+            }
+
+            else if (fechaSeleccionada.getTime() === ayer.getTime() && ahora > limiteAyer) {
+                alertify.error('Al día de ayer solo se podia guardar hasta las 10:00 AM del día hoy');
+                return;
+            }
+
+            // ========================
+            // 🔹 Validación de OTROS CAMPOS
+            // ========================
             if (document.getElementById('intTipoClase').value === '') {
                 alertify.error('Seleccione el tipo de clase');
+                document.getElementById('intTipoClase').focus();
                 return;
             }
             if (document.getElementById('vehiculo').value === '') {
                 alertify.error('Seleccione el vehículo');
+                document.getElementById('vehiculo').focus();
                 return;
             }
-            if (document.getElementById('horaInicio').value === '' || document.getElementById('minInicio').value === '' || document.getElementById('ampmInicio').value === '') {
+            if (document.getElementById('horaInicio').value === '' ||
+                document.getElementById('minInicio').value === '' ||
+                document.getElementById('ampmInicio').value === '') {
                 alertify.error('Seleccione la hora de inicio');
                 return;
             }
-            if (document.getElementById('horaFin').value === '' || document.getElementById('minFin').value === '' || document.getElementById('ampmFin').value === '') {
+            if (document.getElementById('horaFin').value === '' ||
+                document.getElementById('minFin').value === '' ||
+                document.getElementById('ampmFin').value === '') {
                 alertify.error('Seleccione la hora de fin');
                 return;
             }
@@ -277,19 +452,23 @@ if (isset($_SESSION['strTutor'])) {
                 return;
             }
 
-            // Mostrar confirmación con alertify.confirm
+            // ========================
+            // 🔹 Confirmación final
+            // ========================
             alertify.confirm(
                 'AVISO',
                 '¿ Desea guardar el Cierre ?',
                 function () {
-                    // El usuario aceptó
-                    enviarDatos();
+                    enviarDatos(); // Guardar
                 },
                 function () {
-                    // El usuario canceló, no hacemos nada
+                    // Cancelar
                 }
-            ).set('labels', { ok: 'Guardar', cancel: 'Cancelar' })
+            ).set('labels', { ok: 'Guardar', cancel: 'Cancelar' });
         });
+
+
+
 
         function enviarDatos() {
             // Prepara los datos igual que antes
@@ -359,6 +538,8 @@ if (isset($_SESSION['strTutor'])) {
                 $('#vehiculo').val(null).trigger('change'); // Esto limpia select2 correctamente
             }
         }
+
+
 
     </script>
 

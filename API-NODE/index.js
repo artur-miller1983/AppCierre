@@ -202,7 +202,83 @@ app.get('/tipo-clases', async (req, res) => {
   }
 });
 
-//LISTAR  cierres
+
+// LISTAR cierres usando el procedimiento almacenado
+// app.get('/indicadores', async (req, res) => {
+//   const { dteFechaRegistro, strTutor, strVehiculo, intTipoClase, strEstado } = req.query;
+
+//   if (!dteFechaRegistro) {
+//     return res.status(400).send("El parámetro 'dteFechaRegistro' es obligatorio.");
+//   }
+
+//   try {
+//     const pool = await sql.connect(config);
+//     const request = pool.request();
+
+//     // Parámetro obligatorio
+//     request.input('dteFechaRegistro', sql.Date, dteFechaRegistro);
+
+//     // Parámetros opcionales
+//     if (strTutor) request.input('strTutor', sql.VarChar, strTutor);
+//     if (strVehiculo) request.input('strVehiculo', sql.VarChar, strVehiculo);
+//     if (intTipoClase) request.input('intTipoClase', sql.Int, intTipoClase);
+//     if (strEstado) request.input('strEstado', sql.VarChar, strEstado);
+
+//     // Ejecutar procedimiento almacenado
+//     const result = await request.execute('Sp_ReporteCierres');
+
+//     if (result.recordset.length > 0) {
+//       res.json(result.recordset);
+//     } else {
+//       res.status(404).send("No se encontraron cierres con los filtros aplicados.");
+//     }
+//   } catch (error) {
+//     console.error('Error al ejecutar el procedimiento:', error);
+//     res.status(500).send('Error al obtener los cierres');
+//   } finally {
+//     await sql.close();
+//   }
+// });
+
+
+//LISTAR  Indicadores
+app.get('/indicadores', async (req, res) => {
+  const strTutor = req.query.strTutor; // Leer ?strUsuario=juan o undefined
+
+  try {
+    const pool = await sql.connect(config);
+    const request = pool.request();
+
+    let query = 'SELECT * FROM Vis_ReporteCierres ';
+
+    if (strTutor) {
+      query += ' WHERE strTutor = @strTutor';
+      request.input('strTutor', sql.VarChar, strTutor);
+    }
+    query += ' ORDER BY dteLog'; // Ordenar por fecha de cierre
+
+    const result = await request.query(query);
+
+    if (result.recordset.length > 0) {
+      res.json(result.recordset);
+    } else {
+      res
+        .status(404)
+        .send(
+          strUsuario
+            ? 'No se encontraron clases para el tutor especificado'
+            : 'No se encontraron clases'
+        );
+    }
+  } catch (error) {
+    console.error('Error al ejecutar la consulta:', error);
+    res.status(500).send('Error al obtener las clases');
+  } finally {
+    await sql.close();
+  }
+});
+
+//LISTAR  Cierres
 app.get('/cierres', async (req, res) => {
   const strTutor = req.query.strTutor; // Leer ?strUsuario=juan o undefined
 

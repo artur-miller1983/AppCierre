@@ -51,9 +51,9 @@
             <div class="col-md-6 mb-3">
                 <p>&nbsp;</p>
                 <ul class="list-unstyled">
-                    <li><a href="nuevo.php"><i class="fa-solid fa-plus"></i> Nuevo</a></li>
-                    <li><a href="lista.php"><i class="fa-solid fa-bars"></i> Cierres</a></li>
-                    <li><a href="indicadores.php"><i class="fa-solid fa-chart-line"></i> Indicadores</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>cierre/nuevo.php"><i class="fa-solid fa-plus"></i> Nuevo</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>cierre/lista.php"><i class="fa-solid fa-bars"></i> Cierres</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>cierre/indicadores.php"><i class="fa-solid fa-chart-line"></i> Indicadores</a></li>
                     <li><a id="cerrarsesion" href="cerrar.php"><i class="fa-solid fa-power-off"></i> Cerrar sesion</a>
                     </li>
                 </ul>

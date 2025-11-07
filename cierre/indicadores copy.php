@@ -18,71 +18,35 @@ $tipoClaseSeleccionado = $_POST['intTipoClase'] ?? '';
 $VehiculoSeleccionado = $_POST['strPlaca'] ?? '';
 $EstadoSeleccionado = $_POST['strEstado'] ?? '';
 
-//*************************************************** */
-// 🔹 Contexto Con SSL
-//************************************************ */
-
-// if ($Tipo === 'Instructor' || $Tipo === 'Supervisor') {
-//     $dataCierres = @file_get_contents(URL_CIERRES . '?strTutor=' . urlencode($strTutor));
-// } else {
-//     $dataCierres = @file_get_contents(URL_CIERRES);
-// }
-
-// $datos = json_decode($dataCierres, true);
-// if ($datos === null) {
-//     $datos = [];
-// }
-
-// $dataTipoClases = @file_get_contents(URL_TIPO_CLASES);
-// $tipos = json_decode($dataTipoClases, true);
-// if ($tipos === null) {
-//     $tipos = [];
-// }
-
-// $dataTutores = @file_get_contents(URL_TUTORES);
-// $tutores = json_decode($dataTutores, true);
-// if ($tutores === null) {
-//     $tutores = [];
-// }
-
-// $dataVehiculos = @file_get_contents(URL_VEHICULOS);
-// $Vehiculos = json_decode($dataVehiculos, true);
-// if ($Vehiculos === null) {
-//     $Vehiculos = [];
-// }
-//************************************************* */
-
-
-//*************************************************** */
-// 🔹 Contexto sin SSL
-//*************************************************** */
-$contextNoSSL = stream_context_create([
-    "ssl" => [
-        "verify_peer" => false,
-        "verify_peer_name" => false,
-    ],
-]);
-
-//🔹 Cargar cierres según tipo de usuario
 if ($Tipo === 'Instructor' || $Tipo === 'Supervisor') {
-    $dataCierres = @file_get_contents(URL_CIERRES . '?strTutor=' . urlencode($strTutor), false, $contextNoSSL);
+    $dataCierres = @file_get_contents(URL_CIERRES . '?strTutor=' . urlencode($strTutor));
 } else {
-    $dataCierres = @file_get_contents(URL_CIERRES, false, $contextNoSSL);
+    $dataCierres = @file_get_contents(URL_CIERRES);
 }
-$datos = $dataCierres !== false ? json_decode($dataCierres, true) : [];
 
-// 🔹 Cargar otros datos
-$dataTipoClases = @file_get_contents(URL_TIPO_CLASES, false, $contextNoSSL);
-$tipos = $dataTipoClases !== false ? json_decode($dataTipoClases, true) : [];
-
-$dataTutores = @file_get_contents(URL_TUTORES, false, $contextNoSSL);
-$tutores = $dataTutores !== false ? json_decode($dataTutores, true) : [];
-
-$dataVehiculos = @file_get_contents(URL_VEHICULOS, false, $contextNoSSL);
-$Vehiculos = $dataVehiculos !== false ? json_decode($dataVehiculos, true) : [];
-//*************************************************** */
+$datos = json_decode($dataCierres, true);
+if ($datos === null) {
+    $datos = [];
+}
 
 
+$dataTipoClases = @file_get_contents(URL_TIPO_CLASES);
+$tipos = json_decode($dataTipoClases, true);
+if ($tipos === null) {
+    $tipos = [];
+}
+
+$dataTutores = @file_get_contents(URL_TUTORES);
+$tutores = json_decode($dataTutores, true);
+if ($tutores === null) {
+    $tutores = [];
+}
+
+$dataVehiculos = @file_get_contents(URL_VEHICULOS);
+$Vehiculos = json_decode($dataVehiculos, true);
+if ($Vehiculos === null) {
+    $Vehiculos = [];
+}
 
 // Datos para tabla agrupada por Vehiculo y clase
 $datosPorVehiculoClase = [];
@@ -92,7 +56,7 @@ $totalGeneralHoras = 0;
 
 $resultado = array_filter($datos, function ($item) use ($fechaSeleccionada, $tipoClaseSeleccionado, $tutorSeleccionado, $VehiculoSeleccionado) {
 
-    $fechaConvertida = '';
+      $fechaConvertida = '';
     if (!empty($item['dteFecha'])) {
         $fechaObj = new DateTime($item['dteFecha']);
         $fechaConvertida = $fechaObj->format('Y-m-d');
@@ -189,55 +153,6 @@ function formatearHoras($decimal)
     .extra-small {
         display: flex;
     }
-
-     table.dataTable,
-    table.dataTable thead th {
-        border: 1px solid rgb(236, 238, 236) !important;
-        /* gris claro */
-    }
-
-    /* //TITULOD E LAS CABECERAS */
-    table.dataTable {
-        font-size: 14px;
-    }
-
-    table.dataTable thead th,
-    table.dataTable tbody td {
-        padding: 5px 5px !important;
-    }
-
-    /* --- Paginación estilo Bootstrap Outline Success (compacto) --- */
-    .dataTables_wrapper .dataTables_paginate .page-link {
-        background-color: #eecd9046 !important;
-        color: #814b4bff !important;
-        border: 1px solid #d4d8d5ff !important;
-        border-radius: 4px !important;
-        margin: 0 2px !important;
-        padding: 2px 6px !important;
-        /* más pequeños */
-        font-size: 13px !important;
-        /* texto más chico */
-        line-height: 1.2 !important;
-    }
-
-    /* Hover */
-    .dataTables_wrapper .dataTables_paginate .page-link:hover {
-        background-color: #decce0ff !important;
-        color: #31493bff !important;
-    }
-
-    /* Activo */
-    .dataTables_wrapper .dataTables_paginate .page-item.active .page-link {
-        background-color: #1ea31ae5 !important;
-        color: #fff !important;
-        border: 1px solid #d7e6dbff !important;
-    }
-
-    /* Quitar focus feo */
-    .dataTables_wrapper .dataTables_paginate .page-link:focus {
-        outline: none !important;
-        box-shadow: none !important;
-    }
 </style>
 
 <main>
@@ -264,8 +179,7 @@ function formatearHoras($decimal)
                 <?php if ($Tipo === 'Administrador'): ?>
 
                     <div class="col-md-3 mt-2">
-                        <select name="strTutores" class="form-control form-control-sm select-tutores" id="strTutores"
-                            placeholder="Tutores">
+                        <select name="strTutores" class="form-control form-control-sm select-tutores" id="strTutores" placeholder="Tutores">
                             <option value=""></option>
                             <?php foreach ($tutores as $tutor): ?>
                                 <option value="<?= $tutor['strTutor'] ?>" <?= $tutorSeleccionado === $tutor['strTutor'] ? 'selected' : '' ?>>
@@ -299,10 +213,9 @@ function formatearHoras($decimal)
                     </select>
 
                 </div>
-
-                <div class="col-md-2 mt-2 d-flex align-items-center justify-content-between">
-                    <button type="submit" class="btn btn-outline-info btn-sm">Filtrar</button>
-                    <div class="col-auto text-end"  id="contenedor-boton"></div>
+                <div class="col-md-2 mt-2 ">
+                    <button type="submit" class="btn btn-outline-info btn-sm ">Filtrar</button>
+                    <button type="button" class="btn btn-outline-success btn-sm" onclick="exportarExcel()">Exportar</button>
                 </div>
 
             </div>
@@ -472,62 +385,40 @@ function formatearHoras($decimal)
         });
     });
 
+    function exportarExcel() {
 
-    // DataTable
-    $(document).ready(function () {
-        var tabla = $('#tablaClases').DataTable({
-            language: {
-                "decimal": "",
-                "emptyTable": "No hay información disponible",
-                "info": "_START_ de _END_ Registros",
-                "infoEmpty": "0 a 0 de 0 Registros",
-                "infoFiltered": "(_MAX_ Filtrados)",
-                "lengthMenu": "Mostrar _MENU_",
-                "loadingRecords": "Cargando...",
-                "processing": "Procesando...",
-                "search": "Buscar  ",
-                "zeroRecords": "No se encontraron coincidencias",
-                "paginate": {
-                    "first": "<<",
-                    "last": ">>",
-                    "next": ">",
-                    "previous": "<"
-                },
-                "aria": {
-                    "sortAscending": ": activar para ordenar ascendente",
-                    "sortDescending": ": activar para ordenar descendente"
-                }
+        //validar que haya datos tablaClases
+        const tabla = document.getElementById('tablaClases');
+        if (!tabla || tabla.tBodies[0].rows.length === 0) {
+            alertify.alert('Exportar a Excel', 'No hay datos para exportar.');
+            return;
+        }
+
+        alertify.confirm(
+            'Exportar a Excel',
+            '¿Está seguro de que desea exportar los datos a Excel?',
+            function () {
+                // Si presiona "Aceptar"
+                const params = new URLSearchParams({
+                    fecha: '<?= $fechaSeleccionada ?>',
+                    strTutores: '<?= $tutorSeleccionado ?>',
+                    intTipoClase: '<?= $tipoClaseSeleccionado ?>',
+                    strPlaca: '<?= $VehiculoSeleccionado ?>'
+                });
+
+                //mostrar datos  params por consola js
+                console.log(params);
+
+
+               window.open('../exportar.php?' + params.toString(), '_blank');
             },
-            responsive: true,
-            order: [[0, 'desc']],
-            pagingType: "first_last_numbers",
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    text: 'Exportar',
-                    className: 'btn btn-secondary btn-sm',
-                    action: function (e, dt, button, config) {
-                        var self = this; // guardar contexto
-                        var originalAction = $.fn.dataTable.ext.buttons.excelHtml5.action;
+            () => {
+                // Si presiona "Cancelar" (opcional)
+                //alertify.error('Exportación cancelada');
+            }
+        ).set('labels', { ok: 'Sí', cancel: 'No' });
+    }
 
-                        alertify.confirm(
-                            'Confirmación',
-                            '¿Desea exportar los datos a Excel?',
-                            function () { // OK
-                                originalAction.call(self, e, dt, button, config);
-                                alertify.success('Exportando...');
-                            },
-                            function () { // Cancelar
-
-                            }
-                        ).set('labels', { ok: 'Guardar', cancel: 'Cancelar' });
-                    }
-                }
-            ]
-        });
-
-        tabla.buttons().container().appendTo('#contenedor-boton');
-    });
 
 
 

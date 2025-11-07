@@ -95,24 +95,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 
 
-
-
-
-    <!--
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
-     DataTables Buttons 
-    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
--->
-    <!-- Dependencias de exportación 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/vfs_fonts.js"></script>-->
-
-
     <style>
         .dropdown-toggle-no-caret::after {
             display: none !important;
@@ -161,7 +143,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         </small>
                     </div>
                     <a id="btnCerrarSesion" class="nav-link active-custom fa-lg p-0"
-                        href="<?php echo BASE_URL; ?>cerrar.php" title="Cerrar sesión">
+                        href="<?php echo BASE_URL; ?>cerrar.php" title="Cerrar sesión"  >
                         <i class="fa-solid fa-power-off"></i>
                     </a>
 

@@ -2,56 +2,74 @@
 require_once(__DIR__ . '/../config.php');
 session_start();
 
+$hoy = date("Y-m-d");
+$ayer = date("Y-m-d", strtotime("-1 day"));
+
 // Verificar si el usuario está autenticado
 if (!isset($_SESSION['strTipo'])) {
-    header('Location: login.php');
+    header('Location: index.php');
     exit;
 }
 
-if ($_SESSION['strTipo'] === 'Tutor') {
-    header('Location: error.php');
-    exit;
-}
 
 if (isset($_SESSION['strTutor'])) {
 
     $strTutor = $_SESSION['strTutor'];
     $nombreTutor = $_SESSION['strNombres'];
     $strPermiso = $_SESSION['strTipo'];
+    
 
-    // Obtener ID de clase desde GET
-    $idCierre = isset($_GET['id']) ? $_GET['id'] : null;
-    echo "<script>console.log('ID Cierre: " . htmlspecialchars($idCierre) . "');</script>";
-
-    if (!$idCierre) {
-        header('Location: lista.php');
+    // ✅ 1. Validar que venga un ID
+    $idCierre = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+    if ($idCierre <= 0) {
+        header('Location: ../error.php');
         exit();
     }
 
-    // Obtener datos de clase desde la API
-    $dataCierre = @file_get_contents(URL_CIERRE_ID . $idCierre);
+
+
+
+
+
+
+    $contextNoSSL = stream_context_create([
+        "ssl" => [
+            "verify_peer" => false,
+            "verify_peer_name" => false,
+        ],
+    ]);  
+
+    // ✅ 2. Consultar API Sin SSL
+    $dataCierre = @file_get_contents(URL_CIERRE_ID . $idCierre, false, $contextNoSSL);
     $cierre = $dataCierre !== false ? json_decode($dataCierre, true) : null;
 
-    //mostrar en consola el valor de $cierre
-    echo "<script> console.log('Cierre Data: " . json_encode($cierre) . "');</script>";
+
+
+    // ✅ 2. Consultar API CON SSL
+    // $dataCierre = @file_get_contents(URL_CIERRE_ID . $idCierre);
+    // $cierre = $dataCierre !== false ? json_decode($dataCierre, true) : null;
+    
+
+    if (!$cierre) {
+        // No existe el cierre → error
+        header('Location: ../error.php');
+        exit();
+    }
+
+    // ✅ 3. Validar permisos (Instructor solo puede editar lo suyo)
+    $cierreTutor = trim($cierre['strTutor'] ?? '');
+    if ($strPermiso === 'Instructor' && $cierreTutor !== $strTutor) {
+        header('Location: ../error.php');
+        exit();
+    }
+    if ($strPermiso !== 'Instructor' && $strPermiso !== 'Administrador') {
+        header('Location: ../error.php');
+        exit();
+    }
 
     if ($cierre !== null) {
 
-        $cierreTutor = trim($cierre['strTutor'] ?? '');
-        $usuarioTutor = trim($strTutor ?? '');
-
-        if ($strPermiso === 'Tutor') {
-            header('Location:error.php');
-            exit();
-        }
-
-        // 🚦 Si es Supervisor → solo puede editar sus cierres
-        if ($strPermiso === 'Supervisor' && $cierreTutor !== $usuarioTutor) {
-            header('Location: error.php');
-            exit();
-        }
-
-          // ✅ Si pasa la validación, continúa el procesamiento
+        // ✅ Si pasa la validación, continúa el procesamiento
         $fecha = new DateTime($cierre['dteFecha']); // interpreta correctamente la fecha
 
         $fechaFormateadaCierre = $fecha->format('Y-m-d');
@@ -86,25 +104,34 @@ if (isset($_SESSION['strTutor'])) {
         // Extraer horas y minutos de la hora de fin
 
         // muestrame horaInicio po console
-        echo "<script>console.log('Hora Inicio: " . htmlspecialchars($horaFin) . "');</script>";
+        //echo "<script>console.log('Hora Inicio: " . htmlspecialchars($horaFin) . "');</script>";
 
 
     } else {
         $cierre = null;
     }
 
-
     if (!$cierre) {
-        echo "<script>alertify.error('Cierre no encontrada'); window.location.href='cierres.php';</script>";
+        header('Location: ../error.php');
         exit();
     }
 
+    //Con SSL
     // Obtener tipos y vehículos
-    $dataTipoClases = @file_get_contents(URL_TIPO_CLASES);
+    // $dataTipoClases = @file_get_contents(URL_TIPO_CLASES);
+    // $tipos = $dataTipoClases !== false ? json_decode($dataTipoClases, true) : [];
+
+    // $dataVehiculos = @file_get_contents(URL_VEHICULOS);
+    // $vehiculos = $dataVehiculos !== false ? json_decode($dataVehiculos, true) : [];
+    
+
+    //Sin SSL
+    $dataTipoClases = @file_get_contents(URL_TIPO_CLASES, false, $contextNoSSL);
     $tipos = $dataTipoClases !== false ? json_decode($dataTipoClases, true) : [];
 
-    $dataVehiculos = @file_get_contents(URL_VEHICULOS);
+    $dataVehiculos = @file_get_contents(URL_VEHICULOS, false, $contextNoSSL);
     $vehiculos = $dataVehiculos !== false ? json_decode($dataVehiculos, true) : [];
+
 
     include '../plantilla/cabecera.php';
 
@@ -130,7 +157,7 @@ if (isset($_SESSION['strTutor'])) {
         .extra-small {
             display: flex;
         }
-      
+
 
         .letra-pequena {
             font-size: 10px !important;
@@ -159,13 +186,13 @@ if (isset($_SESSION['strTutor'])) {
                             <div class="col-md-3">
                                 <label for="dteFecha">Fecha</label>
                                 <input type="date" class="form-control form-control-sm" id="dteFecha" name="dteFecha"
-                                    required value="<?= $fechaFormateadaCierre ?>">
+                                    value="<?= $fechaFormateadaCierre ?>" min="<?php echo $ayer; ?>"
+                                    max="<?php echo $hoy; ?>" onkeydown="return false;">
                             </div>
 
                             <div class="col-md-6">
                                 <label for="intTipoClase">Tipo Clase</label>
-                                <select name="intTipoClase" class="form-control form-control-sm " id="intTipoClase"
-                                    required>
+                                <select name="intTipoClase" class="form-control form-control-sm " id="intTipoClase">
                                     <option value="">Seleccione</option>
                                     <?php foreach ($tipos as $tipo): ?>
                                         <option value="<?= $tipo['idTipo'] ?>" <?= $tipo['idTipo'] == $strTipoClaseCierre ? 'selected' : '' ?>>
@@ -177,7 +204,7 @@ if (isset($_SESSION['strTutor'])) {
 
                             <div class="col-md-3">
                                 <label for="vehiculo">Vehículo</label>
-                                <select id="vehiculo" name="vehiculo" class="form-control form-control-sm " required>
+                                <select id="vehiculo" name="vehiculo" class="form-control form-control-sm ">
                                     <option value="">Seleccione</option>
                                     <?php foreach ($vehiculos as $vehiculo): ?>
                                         <option value="<?= htmlspecialchars($vehiculo['strPlaca']) ?>"
@@ -202,7 +229,7 @@ if (isset($_SESSION['strTutor'])) {
                             <div class="col-md-3">
                                 <label for="horaInicio">Inicio</label>
                                 <div class="form-group d-flex align-items-center">
-                                    <select class="form-control form-control-sm mr-1" id="horaInicio" required>
+                                    <select class="form-control form-control-sm mr-1" id="horaInicio">
                                         <?php for ($h = 1; $h <= 12; $h++): ?>
                                             <option value="<?= $h ?>" <?= ($horaInicio == $h) ? 'selected' : '' ?>>
                                                 <?= str_pad($h, 2, '0', STR_PAD_LEFT) ?>
@@ -211,9 +238,9 @@ if (isset($_SESSION['strTutor'])) {
                                     </select>
 
                                     <input type="number" class="form-control form-control-sm mr-1" id="minInicio" min="0"
-                                        max="59" value="<?= $minutoInicio ?>" required>
+                                        max="59" value="<?= $minutoInicio ?>">
 
-                                    <select class="form-control form-control-sm" id="ampmInicio" required>
+                                    <select class="form-control form-control-sm" id="ampmInicio">
                                         <option value="AM" <?= $ampmInicio === 'AM' ? 'selected' : '' ?>>AM</option>
                                         <option value="PM" <?= $ampmInicio === 'PM' ? 'selected' : '' ?>>PM</option>
                                     </select>
@@ -317,6 +344,47 @@ if (isset($_SESSION['strTutor'])) {
                     alertify.error('Seleccione la Fecha');
                     return;
                 }
+
+                // ========================
+                // 🔹 Validación de FECHA
+                // ========================
+                const valorFecha = document.getElementById('dteFecha').value;
+                if (valorFecha === '') {
+                    alertify.error('Seleccione la Fecha');
+                    valorFecha.focus();
+                    return;
+                }
+
+                // Convertir YYYY-MM-DD a fecha local
+                const partes = valorFecha.split("-");
+                const fechaSeleccionada = new Date(partes[0], partes[1] - 1, partes[2]);
+                fechaSeleccionada.setHours(0, 0, 0, 0);
+
+                const hoy = new Date();
+                hoy.setHours(0, 0, 0, 0);
+
+                const ayer = new Date(hoy);
+                ayer.setDate(hoy.getDate() - 1);
+
+                const ahora = new Date();
+                const limiteAyer = new Date(hoy);
+                limiteAyer.setHours(10, 0, 0, 0); // Hoy a las 10 AM
+
+                // Reglas
+                if (fechaSeleccionada < ayer) {
+                    alertify.error('Solo puede seleccionar la fecha de ayer antes de 10:00 AM');
+                    return;
+                }
+                else if (fechaSeleccionada > hoy) {
+                    alertify.error('Solo puede seleccionar la fecha actual');
+                    return;
+                }
+                else if (fechaSeleccionada.getTime() === ayer.getTime() && ahora > limiteAyer) {
+                    alertify.error('Al día de ayer solo se podia guardar hasta las 10:00 AM del día hoy');
+                    return;
+                }
+
+
 
                 if (!document.getElementById('intTipoClase').value) {
                     alertify.error('Seleccione el tipo de clase');

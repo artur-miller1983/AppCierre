@@ -2,9 +2,9 @@
 require_once('config.php');
 session_start();
 
-// ini_set('display_errors', 1);
-// ini_set('display_startup_errors', 1);
-// error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 // Verificar si el formulario se envió
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -18,13 +18,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         "strPassword" => $strPassword
     );
 
-    $options = array(
+    //*********************************/
+    // cargar con ssl                 */
+    //*********************************/
+    // $options = array(
+    //     'http' => array(
+    //         'method' => 'POST',
+    //         'header' => 'Content-Type: application/json',
+    //         'content' => json_encode($data)
+    //     )
+    // );
+
+
+    //********************* */
+    // cargar sin ssl       */
+    //********************* */
+        $options = array(
         'http' => array(
-            'method' => 'POST',
-            'header' => 'Content-Type: application/json',
+            'method'  => 'POST',
+            'header'  => 'Content-Type: application/json',
             'content' => json_encode($data)
+        ),
+        'ssl' => array(
+            'verify_peer' => false,
+            'verify_peer_name' => false
         )
     );
+
 
     $context = stream_context_create($options);
 
@@ -61,8 +81,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } catch (\Throwable $th) {
         //throw $th;
     }
+    
 }
 ?>
+
+<?php if (!empty($mensajeError)) { ?>
+    <div class="alert alert-danger text-center p-2" role="alert">
+        <?php echo htmlspecialchars($mensajeError); ?>
+    </div>
+<?php } ?>
+
+<?php if (!empty($mensajeExito)) { ?>
+    <div class="alert alert-success text-center p-2" role="alert">
+        <?php echo htmlspecialchars($mensajeExito); ?>
+    </div>
+<?php } ?>
+
 
 <!DOCTYPE html>
 <html>

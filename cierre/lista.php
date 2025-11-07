@@ -12,9 +12,33 @@ $strTutor = $_SESSION['strTutor'];
 $nombreTutor = $_SESSION['strNombres'];
 $Tipo = $_SESSION['strTipo'];
 
-$dataClases = ($Tipo === 'Tutor' || $Tipo === 'Supervisor')
-    ? @file_get_contents(URL_CIERRES . '?strTutor=' . urlencode($strTutor))
-    : @file_get_contents(URL_CIERRES);
+
+
+ /* ===================================================
+   🌐 BLOQUE ACTUAL CON SSL (ACTIVO)
+   =================================================== */
+// $dataClases = ($Tipo === 'Instructor' || $Tipo === 'Supervisor')
+//     ? @file_get_contents(URL_CIERRES . '?strTutor=' . urlencode($strTutor))
+//     : @file_get_contents(URL_CIERRES);
+// =================================================== */
+
+
+
+ /* ===================================================
+   🌐 BLOQUE ACTUAL SIN SSL (ACTIVO)
+   =================================================== */
+$contextNoSSL = stream_context_create([
+    "ssl" => [
+        "verify_peer" => false,
+        "verify_peer_name" => false,
+    ],
+]);   
+$dataClases = ($Tipo === 'Instructor' || $Tipo === 'Supervisor')
+    ? @file_get_contents(URL_CIERRES . '?strTutor=' . urlencode($strTutor), false, $contextNoSSL)
+    : @file_get_contents(URL_CIERRES, false, $contextNoSSL);
+
+    // =================================================== */
+    
 
 $response = $dataClases !== false ? json_decode($dataClases, true) : [];
 
@@ -43,6 +67,7 @@ function obtenerMesEspanol($mes)
     .extra-small {
         font-size: 12px;
     }
+
     table.dataTable,
     table.dataTable thead th {
         border: 1px solid rgb(236, 238, 236) !important;
@@ -58,38 +83,39 @@ function obtenerMesEspanol($mes)
     table.dataTable tbody td {
         padding: 5px 5px !important;
     }
-/* --- Paginación estilo Bootstrap Outline Success (compacto) --- */
-.dataTables_wrapper .dataTables_paginate .page-link {
-    background-color: #eecd9046 !important;         
-    color: #814b4bff !important;                 
-    border: 1px solid #d4d8d5ff !important;      
-    border-radius: 4px !important;
-    margin: 0 2px !important;
-    padding: 2px 6px !important;   /* más pequeños */
-    font-size: 13px !important;   /* texto más chico */
-    line-height: 1.2 !important;
-}
 
-/* Hover */
-.dataTables_wrapper .dataTables_paginate .page-link:hover {
-    background-color: #decce0ff !important;
-    color: #31493bff !important;
-}
+    /* --- Paginación estilo Bootstrap Outline Success (compacto) --- */
+    .dataTables_wrapper .dataTables_paginate .page-link {
+        background-color: #eecd9046 !important;
+        color: #814b4bff !important;
+        border: 1px solid #d4d8d5ff !important;
+        border-radius: 4px !important;
+        margin: 0 2px !important;
+        padding: 2px 6px !important;
+        /* más pequeños */
+        font-size: 13px !important;
+        /* texto más chico */
+        line-height: 1.2 !important;
+    }
 
-/* Activo */
-.dataTables_wrapper .dataTables_paginate .page-item.active .page-link {
-    background-color: #1ea31ae5 !important;
-    color: #fff !important;
-    border: 1px solid #d7e6dbff !important;
-}
+    /* Hover */
+    .dataTables_wrapper .dataTables_paginate .page-link:hover {
+        background-color: #decce0ff !important;
+        color: #31493bff !important;
+    }
 
-/* Quitar focus feo */
-.dataTables_wrapper .dataTables_paginate .page-link:focus {
-    outline: none !important;
-    box-shadow: none !important;
-}
+    /* Activo */
+    .dataTables_wrapper .dataTables_paginate .page-item.active .page-link {
+        background-color: #1ea31ae5 !important;
+        color: #fff !important;
+        border: 1px solid #d7e6dbff !important;
+    }
 
-
+    /* Quitar focus feo */
+    .dataTables_wrapper .dataTables_paginate .page-link:focus {
+        outline: none !important;
+        box-shadow: none !important;
+    }
 </style>
 
 <main>
@@ -115,9 +141,7 @@ function obtenerMesEspanol($mes)
                             <th class="small">Vehículo</th>
                             <th class="small">Horario</th>
                             <th class="small">Duración</th>
-                            <?php if ($Tipo !== 'Tutor'): ?>
-                                <th class="small"></th>
-                            <?php endif; ?>
+                            <th class="small"></th>
                         </tr>
                     </thead>
                     <tbody class="">
@@ -135,26 +159,33 @@ function obtenerMesEspanol($mes)
                                 <td class="extra-small"><?php echo $data['strVehiculo']; ?></td>
                                 <td class="extra-small">
                                     <?php
-                                    echo date("g:i A", strtotime($data['tmeHoraInicio']));
-                                    echo ' / ';
-                                    echo date("g:i A", strtotime($data['tmeHoraFin']));
+                                    if (!empty($data['tmeHoraInicio']) && !empty($data['tmeHoraFin'])) {
+                                        $horaInicio = new DateTime($data['tmeHoraInicio']);
+                                        $horaFin = new DateTime($data['tmeHoraFin']);
+                                        echo $horaInicio->format('g:i A') . ' / ' . $horaFin->format('g:i A');
+                                    } else {
+                                        echo '-';
+                                    }
                                     ?>
                                 </td>
+
                                 <td class="extra-small">
                                     <?php echo $data['intCantHoras'] . "Hr / " . $data['intCantMinutos'] . 'Mn'; ?>
                                 </td>
-                                <?php if ($Tipo !== 'Tutor'): ?>
-                                    <td class="extra-small">
-                                        <a href="editar.php?id=<?php echo $data['intIDCierre']; ?>" class="mr-1 text-success"
-                                            title="Editar Cierre">
-                                            <i class="fas fa-edit fa-lg"></i>
-                                        </a>
+
+                                <td class="extra-small">
+                                    <a href="editar.php?id=<?php echo $data['intIDCierre']; ?>" class="mr-1 text-success"
+                                        title="Editar Cierre">
+                                        <i class="fas fa-edit fa-lg"></i>
+                                    </a>
+                                    <?php if ($Tipo !== 'Instructor'): ?>
                                         <a href="#" class="text-danger eliminar-cierre"
                                             data-id="<?php echo $data['intIDCierre']; ?>" title="Eliminar Cierre">
                                             <i class="fas fa-trash-alt fa-lg"></i>
                                         </a>
-                                    </td>
-                                <?php endif; ?>
+                                    <?php endif; ?>
+                                </td>
+
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -217,7 +248,7 @@ function obtenerMesEspanol($mes)
                     "last": ">>",
                     "next": ">",
                     "previous": "<"
-                },                  
+                },
                 "aria": {
                     "sortAscending": ": activar para ordenar ascendente",
                     "sortDescending": ": activar para ordenar descendente"
@@ -225,20 +256,20 @@ function obtenerMesEspanol($mes)
             },
             responsive: true,
             order: [[0, 'desc']],
-            pagingType: "first_last_numbers", 
-            dom: 
-            // fila 1: selector izquierda + buscador derecha
-            '<"row mb-2"<"col-sm-6"l><"col-sm-6 text-end"f>>' +
-            // fila 2: botones exportación derecha
-            '<"row mb-2"<"col-sm-12 text-end"B>>' +
-            // tabla
-            'rt' +
-            // fila 3: info izquierda + paginación derecha
-            '<"row mt-2"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7 text-end"p>>',
+            pagingType: "first_last_numbers",
+            dom:
+                // fila 1: selector izquierda + buscador derecha
+                '<"row mb-2"<"col-sm-6"l><"col-sm-6 text-end"f>>' +
+                // fila 2: botones exportación derecha
+                '<"row mb-2"<"col-sm-12 text-end"B>>' +
+                // tabla
+                'rt' +
+                // fila 3: info izquierda + paginación derecha
+                '<"row mt-2"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7 text-end"p>>',
             buttons: [
                 {
                     extend: 'excelHtml5',
-                    text: '<i class="fa fa-file-excel"></i> Exportar',
+                    text: 'Exportar',
                     className: 'btn btn-secondary btn-sm',
                     action: function (e, dt, button, config) {
                         var self = this; // guardar contexto
@@ -254,7 +285,7 @@ function obtenerMesEspanol($mes)
                             function () { // Cancelar
 
                             }
-                        );
+                        ).set('labels', { ok: 'Guardar', cancel: 'Cancelar' });
                     }
                 }
             ]

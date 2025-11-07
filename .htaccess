@@ -2,3 +2,11 @@ RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^([^\.]+)$ $1.php [NC,L]
+
+
+# 🔹 Manejo de errores personalizados
+ErrorDocument 404 /AppCierre/error.php
+ErrorDocument 403 /AppCierre/error.php
+
+# 🔹 Evitar listado de directorios
+Options -Indexes
