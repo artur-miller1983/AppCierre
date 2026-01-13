@@ -147,13 +147,16 @@ function obtenerMesEspanol($mes)
                     <tbody class="">
                         <?php foreach ($response as $data): ?>
                             <tr class="text-secondary">
-                                <td class="extra-small">
-                                    <?php
-                                    $fecha = new DateTime($data['dteFecha']); // interpreta la fecha
+                                <td class="extra-small"
+                                <?php
+                                    $fecha = new DateTime($data['dteFecha']);   // <-- AQUÍ se crea
                                     $mesEspanol = obtenerMesEspanol($fecha->format('F'));
-                                    echo $fecha->format('d') . '/' . $mesEspanol . '/' . $fecha->format('Y');
-                                    ?>
-                                </td>
+                                    $orden = $fecha->format('Ymd');             // valor oculto para ordenar
+                                ?>
+                                data-order="<?= $orden ?>">
+                                <?= $fecha->format('d') . '/' . $mesEspanol . '/' . $fecha->format('Y') ?>
+                            </td>
+
                                 <td class="extra-small"><?php echo $data['nombreClase']; ?></td>
                                 <td class="extra-small"><?php echo $data['nombreTutor']; ?></td>
                                 <td class="extra-small"><?php echo $data['strVehiculo']; ?></td>
@@ -169,8 +172,8 @@ function obtenerMesEspanol($mes)
                                     ?>
                                 </td>
 
-                                <td class="extra-small">
-                                    <?php echo $data['intCantHoras'] . "Hr / " . $data['intCantMinutos'] . 'Mn'; ?>
+                                <td class="small text-center">
+                                    <?php echo $data['intCantHoras']?>
                                 </td>
 
                                 <td class="extra-small">
@@ -244,10 +247,10 @@ function obtenerMesEspanol($mes)
                 "search": "Buscar  ",
                 "zeroRecords": "No se encontraron coincidencias",
                 "paginate": {
-                    "first": "<<",
-                    "last": ">>",
-                    "next": ">",
-                    "previous": "<"
+                    "first": "Primero",
+                    "last": "Ultimo",
+                    "next": "Siguiente",
+                    "previous": "Anterior"
                 },
                 "aria": {
                     "sortAscending": ": activar para ordenar ascendente",
@@ -255,8 +258,12 @@ function obtenerMesEspanol($mes)
                 }
             },
             responsive: true,
-            order: [[0, 'desc']],
-            pagingType: "first_last_numbers",
+            order: [[0, 'DESC']],
+            pagingType: "full_numbers",
+            pageLength: 10,
+            columnDefs: [               
+                { targets: [6], orderable: false }               
+            ],
             dom:
                 // fila 1: selector izquierda + buscador derecha
                 '<"row mb-2"<"col-sm-6"l><"col-sm-6 text-end"f>>' +
