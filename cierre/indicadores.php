@@ -404,7 +404,7 @@ function formatearHoras($decimal)
         <div class="card shadow mt-2">
             <div class="card-header bg-light text-secondary d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 small">
-                    <i class="fas fa-user-clock mr-2 text-success"></i>Cantidad de Clases Por Instructor
+                    <i class="fas fa-user-clock mr-2 text-success"></i>Cantidad de Clases
                 </h5>
                 <button id="btnExportarPDF" class="btn btn-outline-danger btn-sm" style="font-size:11px">
                     <i class="fa-solid fa-file-pdf mr-1"></i>PDF
@@ -418,7 +418,7 @@ function formatearHoras($decimal)
                             <thead class="thead-light">
                                 <tr>
                                     <th>Fecha</th>
-                                    <th>Instructor</th>
+                                    <th>Responsable</th>
                                     <th>Tipo Clase</th>
                                     <th>Vehiculo</th>
                                     <th>Cantidad Horas</th>
@@ -468,7 +468,7 @@ function formatearHoras($decimal)
                         <thead class="thead-light">
                             <tr>
                                 <th>#</th>
-                                <th>Instructor</th>
+                                <th>Responsable</th>
                                 <th class="text-center">Cierres</th>
                                 <th class="text-center">Horas</th>
                                 <th style="min-width:120px">Progreso</th>

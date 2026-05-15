@@ -1,4 +1,5 @@
 <?php
+// version  PHP 7.3.25
 
 //Definicion de variables de entorno Produccion
 define('URL_LOGIN_TUTOR', 'https://api.masmedellin.com/api-cea/loginTutor');
@@ -25,22 +26,26 @@ if (!is_dir(__DIR__ . '/logs')) {
 }
 
 // Captura warnings, notices, etc.
-function _appErrorHandler($errno, $errstr, $errfile, $errline) {
+function _appErrorHandler($errno, $errstr, $errfile, $errline)
+{
     $tipos = array(
-        E_ERROR         => 'ERROR',
-        E_WARNING       => 'WARNING',
-        E_NOTICE        => 'NOTICE',
-        E_USER_ERROR    => 'ERROR',
-        E_USER_WARNING  => 'WARNING',
-        E_USER_NOTICE   => 'NOTICE',
+        E_ERROR => 'ERROR',
+        E_WARNING => 'WARNING',
+        E_NOTICE => 'NOTICE',
+        E_USER_ERROR => 'ERROR',
+        E_USER_WARNING => 'WARNING',
+        E_USER_NOTICE => 'NOTICE',
     );
-    if (defined('E_DEPRECATED'))       $tipos[E_DEPRECATED]      = 'DEPRECATED';
-    if (defined('E_USER_DEPRECATED'))  $tipos[E_USER_DEPRECATED] = 'DEPRECATED';
+    if (defined('E_DEPRECATED'))
+        $tipos[E_DEPRECATED] = 'DEPRECATED';
+    if (defined('E_USER_DEPRECATED'))
+        $tipos[E_USER_DEPRECATED] = 'DEPRECATED';
 
     $tipo = isset($tipos[$errno]) ? $tipos[$errno] : "ERR({$errno})";
-    $ts   = date('Y-m-d H:i:s');
+    $ts = date('Y-m-d H:i:s');
     $page = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'cli';
-    @file_put_contents(LOG_FILE,
+    @file_put_contents(
+        LOG_FILE,
         "[{$ts}] [{$tipo}] [{$page}] {$errstr} en {$errfile}:{$errline}" . PHP_EOL,
         FILE_APPEND | LOCK_EX
     );
@@ -48,14 +53,18 @@ function _appErrorHandler($errno, $errstr, $errfile, $errline) {
 }
 
 // Captura errores fatales que set_error_handler no puede atrapar
-function _appShutdownHandler() {
+function _appShutdownHandler()
+{
     $err = error_get_last();
-    if (!$err) return;
+    if (!$err)
+        return;
     $fatales = array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR);
-    if (!in_array($err['type'], $fatales)) return;
-    $ts   = date('Y-m-d H:i:s');
+    if (!in_array($err['type'], $fatales))
+        return;
+    $ts = date('Y-m-d H:i:s');
     $page = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'cli';
-    @file_put_contents(LOG_FILE,
+    @file_put_contents(
+        LOG_FILE,
         "[{$ts}] [FATAL] [{$page}] {$err['message']} en {$err['file']}:{$err['line']}" . PHP_EOL,
         FILE_APPEND | LOCK_EX
     );
@@ -65,11 +74,13 @@ set_error_handler('_appErrorHandler');
 register_shutdown_function('_appShutdownHandler');
 error_reporting(E_ALL);
 
-function logApp($level, $message, $ctx = array()) {
-    $ts    = date('Y-m-d H:i:s');
+function logApp($level, $message, $ctx = array())
+{
+    $ts = date('Y-m-d H:i:s');
     $extra = $ctx ? ' | ' . json_encode($ctx) : '';
-    $page  = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'cli';
-    @file_put_contents(LOG_FILE,
+    $page = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'cli';
+    @file_put_contents(
+        LOG_FILE,
         "[{$ts}] [{$level}] [{$page}] {$message}{$extra}" . PHP_EOL,
         FILE_APPEND | LOCK_EX
     );
@@ -80,7 +91,8 @@ $contextNoSSL = stream_context_create(array(
     'ssl' => array('verify_peer' => false, 'verify_peer_name' => false),
 ));
 
-function apiGet($url) {
+function apiGet($url)
+{
     global $contextNoSSL;
     $result = @file_get_contents($url, false, $contextNoSSL);
     if ($result === false) {

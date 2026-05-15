@@ -164,7 +164,7 @@ function obtenerMesEspanol($mes)
                         <tr>
                             <th class="small">Fecha</th>
                             <th class="small">Clase</th>
-                            <th class="small">Tutor</th>
+                            <th class="small">Responsable</th>
                             <th class="small">Vehículo</th>
                             <th class="small">Horario</th>
                             <th class="small">Duración</th>

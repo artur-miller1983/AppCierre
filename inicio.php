@@ -173,7 +173,7 @@ include './plantilla/cabecera.php';
                              title="<?= htmlspecialchars($topInstructor) ?>">
                             <?= htmlspecialchars($topInstructor) ?>
                         </div>
-                        <div class="kpi-label">Top instructor</div>
+                        <div class="kpi-label">Top</div>
                         <?php if ($topInstructor !== '—'): ?>
                         <div class="kpi-sub text-muted"><?= fmtHoras($topInstructorHoras) ?> este mes</div>
                         <?php endif; ?>
@@ -233,7 +233,7 @@ include './plantilla/cabecera.php';
                                 <tr>
                                     <th>Fecha</th>
                                     <th>Clase</th>
-                                    <th>Instructor</th>
+                                    <th>Responsable</th>
                                     <th class="text-center">Horas</th>
                                 </tr>
                             </thead>

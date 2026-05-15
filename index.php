@@ -2,228 +2,226 @@
 require_once('config.php');
 session_start();
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-// Verificar si el formulario se envió
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-    $strTutor = $_POST["strTutor"];
+    $strTutor    = $_POST["strTutor"];
     $strPassword = $_POST["strPassword"];
 
-    $url = URL_LOGIN_TUTOR;
-    $data = array(
-        "strTutor" => $strTutor,
-        "strPassword" => $strPassword
-    );
-
-    //*********************************/
-    // cargar con ssl                 */
-    //*********************************/
-    // $options = array(
-    //     'http' => array(
-    //         'method' => 'POST',
-    //         'header' => 'Content-Type: application/json',
-    //         'content' => json_encode($data)
-    //     )
-    // );
-
-
-    //********************* */
-    // cargar sin ssl       */
-    //********************* */
-        $options = array(
+    $options = array(
         'http' => array(
             'method'  => 'POST',
             'header'  => 'Content-Type: application/json',
-            'content' => json_encode($data)
+            'content' => json_encode(array('strTutor' => $strTutor, 'strPassword' => $strPassword))
         ),
         'ssl' => array(
-            'verify_peer' => false,
+            'verify_peer'      => false,
             'verify_peer_name' => false
         )
     );
 
+    $context  = stream_context_create($options);
+    $response = @file_get_contents(URL_LOGIN_TUTOR, false, $context);
 
-    $context = stream_context_create($options);
-
-    try {
-        ini_set('display_errors', 0);
-        $response = file_get_contents($url, false, $context);
-
-        if ($response === false) {
-            $status_line = $http_response_header[0] ?? '';
-            if (strpos($status_line, "401") !== false) {
-                $mensajeError = "Usuario o contraseña incorrecta";
-            } else {
-                $mensajeError = "Error en la solicitud a la API";
-            }
+    if ($response === false) {
+        $status_line = isset($http_response_header[0]) ? $http_response_header[0] : '';
+        $mensajeError = (strpos($status_line, "401") !== false)
+            ? "Usuario o contraseña incorrecta"
+            : "No se pudo conectar con el servidor";
+    } else {
+        $responseData = json_decode($response, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($responseData) && !empty($responseData)) {
+            $_SESSION['strTutor']   = $responseData['strTutor'];
+            $_SESSION['strNombres'] = $responseData['strNombres'];
+            $_SESSION['strTipo']    = $responseData['strTipo'];
+            header("Location: inicio.php");
+            exit();
         } else {
-            $responseData = json_decode($response, true);
-
-            if (json_last_error() === JSON_ERROR_NONE && is_array($responseData) && !empty($responseData)) {
-                
-                // Login correcto, guardar datos en sesión
-                $_SESSION['strTutor'] = $responseData['strTutor'];
-                $_SESSION['strNombres'] = $responseData['strNombres'];
-                $_SESSION['strTipo'] = $responseData['strTipo'];
-
-                // Redirigir a la página de inicio
-                header("Location: inicio.php");
-                exit();
-            } else {
-                $mensajeError = "Respuesta inválida de la API";
-            }
+            $mensajeError = "Usuario o contraseña incorrecta";
         }
-
-
-    } catch (\Throwable $th) {
-        //throw $th;
     }
-    
 }
 ?>
-
-<?php if (!empty($mensajeError)) { ?>
-    <div class="alert alert-danger text-center p-2" role="alert">
-        <?php echo htmlspecialchars($mensajeError); ?>
-    </div>
-<?php } ?>
-
-<?php if (!empty($mensajeExito)) { ?>
-    <div class="alert alert-success text-center p-2" role="alert">
-        <?php echo htmlspecialchars($mensajeExito); ?>
-    </div>
-<?php } ?>
-
-
 <!DOCTYPE html>
-<html>
-
+<html lang="es">
 <head>
-    <title>CEA Cierre</title>
-
-    <!-- Latest compiled and minified CSS -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>CEA - Cierre</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css"
-        integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ" crossorigin="anonymous">
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.0/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
         body {
             background-image: url("./img/fondoCierre2.png");
             background-size: cover;
             background-position: center;
-            background-repeat: no-repeat;   
-        }
-
-        body::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(25, 87, 43, 0.2); /* Negro al 50% */
-            z-index: -1; /* queda detrás del contenido */
-        }
-        .container {
-            height: 100vh;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .card {
-            background-color: rgba(60, 121, 83, 0.1);
-            border: none;
-            border-radius: 19px;
-            padding: 30px;
-            margin-top: -50px;
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-color: rgba(15, 60, 30, 0.45);
+            z-index: 0;
         }
 
-        .card-title {
-            text-align: center;
+        .login-wrap {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
         }
 
-        .card-subtitle {
+        .login-card {
+            width: 100%;
+            max-width: 420px;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 20px;
+            padding: 2.2rem 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+        }
+
+        .login-logo {
             display: block;
-            margin-top: 0px;
-            color: white;   
-            font-size: 14px;
-            padding-top: 8px;
+            margin: 0 auto 0.4rem;
+            max-width: 180px;
+            height: auto;
         }
 
-        .form-group {
-            margin-bottom: 20px;
+        .login-subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+            margin-bottom: 1.6rem;
         }
 
+        .login-card label {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
 
+        .login-card .form-control {
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            padding: 0.55rem 0.85rem;
+        }
+
+        .login-card .form-control::placeholder { color: rgba(255,255,255,0.5); }
+        .login-card .form-control:focus {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.6);
+            color: #fff;
+            box-shadow: 0 0 0 0.2rem rgba(255,255,255,0.15);
+        }
+
+        .btn-ingresar {
+            width: 100%;
+            background: rgba(30, 163, 26, 0.85);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.95rem;
+            padding: 0.6rem;
+            letter-spacing: 0.4px;
+            transition: background 0.2s;
+        }
+        .btn-ingresar:hover { background: rgba(20, 130, 18, 0.95); color: #fff; }
+
+        .home-link {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            color: rgba(255,255,255,0.7);
+            font-size: 1.1rem;
+            z-index: 2;
+        }
+        .home-link:hover { color: #fff; }
+
+        .alert-login {
+            border-radius: 10px;
+            font-size: 0.85rem;
+            padding: 0.5rem 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        /* móvil pequeño */
+        @media (max-width: 400px) {
+            .login-card { padding: 1.6rem 1.2rem; }
+            .login-logo { max-width: 150px; }
+        }
     </style>
 
     <script>
-        // Deshabilitar el botón de retroceso del navegador
         history.pushState(null, null, location.href);
-        window.onpopstate = function () {
-            history.go(1);
-        };
+        window.onpopstate = function() { history.go(1); };
     </script>
 </head>
-
 <body>
-    <div class="container">
 
-        <div class="card shadow-lg" style="width: 350px;">
-            <!-- ICONO HOME PARA LA PAGINA CEA -->
-            <div class="text-right">
-                <a href="<?php echo URL_INICIO_CEA; ?>" class="btn btn-default">
-                    <i class="fas fa-home fa-1x"></i>
-                </a>
+    <a href="<?php echo URL_INICIO_CEA; ?>" class="home-link" title="Ir al sitio web">
+        <i class="fas fa-home"></i>
+    </a>
+
+    <div class="login-wrap">
+        <div class="login-card">
+
+            <img src="./img/LogoCeaSInTitulo.png" class="login-logo" alt="CEA Logo">
+            <p class="login-subtitle">Cierre Diario</p>
+
+            <?php if (!empty($mensajeError)): ?>
+            <div class="alert alert-danger alert-login" role="alert">
+                <i class="fas fa-exclamation-circle mr-1"></i>
+                <?php echo htmlspecialchars($mensajeError); ?>
             </div>
+            <?php endif; ?>
 
-            <a class="text-center">
-                <img src="./img/LogoCeaSInTitulo.png" width="195" height="65" class="d-inline-block r">
-            </a>
-            <h2 class="card-title"><span class="card-subtitle">Cierre Diario</span></h2>
-
-            <?php if (isset($errores["general"])) { ?>
-                <p><?php echo $errores["general"]; ?></p>
-            <?php } ?>
-
-            <form method="POST" action="<?php echo $_SERVER["PHP_SELF"]; ?>">
-                <div class="form-group">
-                    <label for="strTutor" class="text-white" >Instructor:</label>
-                    <input type="text" id="strTutor" name="strTutor" class="form-control form-control-sm " required>
-                    <?php if (isset($errores["strTutor"])) { ?>
-                        <p><?php echo $errores["strTutor"]; ?></p>
-                    <?php } ?>
+            <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+                <div class="form-group mb-3">
+                    <label for="strTutor">Usuario</label>
+                    <input type="text" id="strTutor" name="strTutor"
+                           class="form-control" autocomplete="username"
+                           placeholder="Identificación del responsable" required>
                 </div>
-
-                <div class="form-group">
-                    <label for="strPassword" class="text-white"  >Contraseña:</label>
-                    <input type="password" id="strPassword" name="strPassword" class="form-control form-control-sm" required>
-                    <?php if (isset($errores["strPassword"])) { ?>
-                        <p><?php echo $errores["strPassword"]; ?></p>
-                    <?php } ?>
+                <div class="form-group mb-4">
+                    <label for="strPassword">Contraseña</label>
+                    <input type="password" id="strPassword" name="strPassword"
+                           class="form-control" autocomplete="current-password"
+                           placeholder="••••••••" required>
                 </div>
-
-                <input type="submit" value="Acceso" class="btn btn-outline-dark btn-block">
+                <button type="submit" class="btn btn-ingresar">
+                    <i class="fas fa-sign-in-alt mr-1"></i> Acceso
+                </button>
             </form>
+
         </div>
-
-
-        
     </div>
 
-    <!-- Optional JavaScript -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.0/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.min.js"></script>
-
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-
 </html>

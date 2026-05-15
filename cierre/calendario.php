@@ -361,7 +361,7 @@ include '../plantilla/cabecera.php';
 
         var html = '<div class="table-responsive"><table class="table table-sm mb-0" style="font-size:12px">'
             + '<thead class="thead-light"><tr>'
-            + '<th>Instructor</th><th>Clase</th><th>Vehículo</th><th>Horario</th><th class="text-center">Horas</th>'
+            + '<th>Responsable</th><th>Clase</th><th>Vehículo</th><th>Horario</th><th class="text-center">Horas</th>'
             + '</tr></thead><tbody>';
 
         info.items.forEach(function (c) {
