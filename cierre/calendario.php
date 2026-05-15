@@ -364,14 +364,16 @@ include '../plantilla/cabecera.php';
             + '<th>Responsable</th><th>Clase</th><th>Vehículo</th><th>Horario</th><th class="text-center">Horas</th>'
             + '</tr></thead><tbody>';
 
+        function extraerHora(val) {
+            if (!val) return null;
+            var m = String(val).match(/(\d{1,2}):(\d{2})/);
+            return m ? m[1].padStart(2, '0') + ':' + m[2] : null;
+        }
+
         info.items.forEach(function (c) {
-            var inicio = c.tmeHoraInicio ? new Date(c.tmeHoraInicio) : null;
-            var fin = c.tmeHoraFin ? new Date(c.tmeHoraFin) : null;
-            var horario = (inicio && fin)
-                ? inicio.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
-                + ' / '
-                + fin.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
-                : '—';
+            var inicio = extraerHora(c.tmeHoraInicio);
+            var fin    = extraerHora(c.tmeHoraFin);
+            var horario = (inicio && fin) ? inicio + ' / ' + fin : '—';
 
             html += '<tr>'
                 + '<td>' + (c.nombreTutor || '—') + '</td>'
