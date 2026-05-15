@@ -17,7 +17,7 @@ if (isset($_SESSION['strTutor'])) {
     $strTutor = $_SESSION['strTutor'];
     $nombreTutor = $_SESSION['strNombres'];
     $strPermiso = $_SESSION['strTipo'];
-    
+
 
     // ✅ 1. Validar que venga un ID
     $idCierre = isset($_GET['id']) ? (int) $_GET['id'] : 0;
@@ -27,28 +27,16 @@ if (isset($_SESSION['strTutor'])) {
     }
 
 
-
-
-
-
-
-    $contextNoSSL = stream_context_create([
-        "ssl" => [
-            "verify_peer" => false,
-            "verify_peer_name" => false,
-        ],
-    ]);  
-
-    // ✅ 2. Consultar API Sin SSL
-    $dataCierre = @file_get_contents(URL_CIERRE_ID . $idCierre, false, $contextNoSSL);
-    $cierre = $dataCierre !== false ? json_decode($dataCierre, true) : null;
+    // ✅ 2. Consultar API
+    $dataCierre = apiGet(URL_CIERRE_ID . $idCierre);
+    $cierre = $dataCierre !== '' ? json_decode($dataCierre, true) : null;
 
 
 
     // ✅ 2. Consultar API CON SSL
     // $dataCierre = @file_get_contents(URL_CIERRE_ID . $idCierre);
     // $cierre = $dataCierre !== false ? json_decode($dataCierre, true) : null;
-    
+
 
     if (!$cierre) {
         // No existe el cierre → error
@@ -62,7 +50,8 @@ if (isset($_SESSION['strTutor'])) {
         header('Location: ../error.php');
         exit();
     }
-    if ($strPermiso !== 'Instructor' && $strPermiso !== 'Administrador') {
+
+    if ($strPermiso !== 'Instructor' && $strPermiso !== 'Administrador' && $strPermiso !== 'Supervisor' && $strPermiso !== 'Auxiliar') {
         header('Location: ../error.php');
         exit();
     }
@@ -123,14 +112,13 @@ if (isset($_SESSION['strTutor'])) {
 
     // $dataVehiculos = @file_get_contents(URL_VEHICULOS);
     // $vehiculos = $dataVehiculos !== false ? json_decode($dataVehiculos, true) : [];
-    
 
-    //Sin SSL
-    $dataTipoClases = @file_get_contents(URL_TIPO_CLASES, false, $contextNoSSL);
-    $tipos = $dataTipoClases !== false ? json_decode($dataTipoClases, true) : [];
 
-    $dataVehiculos = @file_get_contents(URL_VEHICULOS, false, $contextNoSSL);
-    $vehiculos = $dataVehiculos !== false ? json_decode($dataVehiculos, true) : [];
+    $dataTipoClases = apiGet(URL_TIPO_CLASES);
+    $tipos = $dataTipoClases !== '' ? json_decode($dataTipoClases, true) : [];
+
+    $dataVehiculos = apiGet(URL_VEHICULOS);
+    $vehiculos = $dataVehiculos !== '' ? json_decode($dataVehiculos, true) : [];
 
 
     include '../plantilla/cabecera.php';

@@ -13,6 +13,7 @@ $Tipo = $_SESSION['strTipo'];
 
 
 $fechaSeleccionada = $_POST['fecha'] ?? date('Y-m-d');
+$fechaSeleccionadaFin = $_POST['fechaFin'] ?? date('Y-m-d');
 $tutorSeleccionado = $_POST['strTutores'] ?? '';
 $tipoClaseSeleccionado = $_POST['intTipoClase'] ?? '';
 $VehiculoSeleccionado = $_POST['strPlaca'] ?? '';
@@ -56,30 +57,20 @@ $EstadoSeleccionado = $_POST['strEstado'] ?? '';
 //*************************************************** */
 // 🔹 Contexto sin SSL
 //*************************************************** */
-$contextNoSSL = stream_context_create([
-    "ssl" => [
-        "verify_peer" => false,
-        "verify_peer_name" => false,
-    ],
-]);
+$urlCierres = ($Tipo === 'Instructor' || $Tipo === 'Auxiliar' || $Tipo === 'Supervisor')
+    ? URL_CIERRES . '?strTutor=' . urlencode($strTutor)
+    : URL_CIERRES;
+$dataCierres = apiGet($urlCierres);
+$datos = $dataCierres !== '' ? json_decode($dataCierres, true) : [];
 
-//🔹 Cargar cierres según tipo de usuario
-if ($Tipo === 'Instructor' || $Tipo === 'Supervisor') {
-    $dataCierres = @file_get_contents(URL_CIERRES . '?strTutor=' . urlencode($strTutor), false, $contextNoSSL);
-} else {
-    $dataCierres = @file_get_contents(URL_CIERRES, false, $contextNoSSL);
-}
-$datos = $dataCierres !== false ? json_decode($dataCierres, true) : [];
+$dataTipoClases = apiGet(URL_TIPO_CLASES);
+$tipos = $dataTipoClases !== '' ? json_decode($dataTipoClases, true) : [];
 
-// 🔹 Cargar otros datos
-$dataTipoClases = @file_get_contents(URL_TIPO_CLASES, false, $contextNoSSL);
-$tipos = $dataTipoClases !== false ? json_decode($dataTipoClases, true) : [];
+$dataTutores = apiGet(URL_TUTORES);
+$tutores = $dataTutores !== '' ? json_decode($dataTutores, true) : [];
 
-$dataTutores = @file_get_contents(URL_TUTORES, false, $contextNoSSL);
-$tutores = $dataTutores !== false ? json_decode($dataTutores, true) : [];
-
-$dataVehiculos = @file_get_contents(URL_VEHICULOS, false, $contextNoSSL);
-$Vehiculos = $dataVehiculos !== false ? json_decode($dataVehiculos, true) : [];
+$dataVehiculos = apiGet(URL_VEHICULOS);
+$Vehiculos = $dataVehiculos !== '' ? json_decode($dataVehiculos, true) : [];
 //*************************************************** */
 
 
@@ -90,18 +81,20 @@ $datosPorTutorClase = [];
 $horasPorClase = [];
 $totalGeneralHoras = 0;
 
-$resultado = array_filter($datos, function ($item) use ($fechaSeleccionada, $tipoClaseSeleccionado, $tutorSeleccionado, $VehiculoSeleccionado) {
+$resultado = array_filter($datos, function ($item) use ($fechaSeleccionada, $fechaSeleccionadaFin, $tipoClaseSeleccionado, $tutorSeleccionado, $VehiculoSeleccionado) {
 
-    $fechaConvertida = '';
-    if (!empty($item['dteFecha'])) {
-        $fechaObj = new DateTime($item['dteFecha']);
-        $fechaConvertida = $fechaObj->format('Y-m-d');
+    if (empty($item['dteFecha'])) {
+        return false;
     }
 
-    // Convertir en Cadena Vacia en caso que venga null ya que es un array de la libreria select2
+    $fechaObj = new DateTime($item['dteFecha']);
+    $fechaConvertida = $fechaObj->format('Y-m-d');
+
+    // Convertir tutor
     $tutor = $item['strTutor'] ?? '';
 
-    return $fechaConvertida == $fechaSeleccionada
+    return
+        ($fechaConvertida >= $fechaSeleccionada && $fechaConvertida <= $fechaSeleccionadaFin)
         && ($tipoClaseSeleccionado === '' || $item['intTipoClase'] == $tipoClaseSeleccionado)
         && ($tutorSeleccionado === '' || trim($tutor) === trim($tutorSeleccionado))
         && ($VehiculoSeleccionado === '' || trim($item['strVehiculo']) === trim($VehiculoSeleccionado));
@@ -112,6 +105,7 @@ $datosFiltrados = []; // <-- inicializamos el array
 
 if (!empty($resultado)) {
     foreach ($resultado as $fila) {
+        $fecha = $fila['dteFecha'] ?? 'Fecha no especificada';
         $tutor = $fila['nombreTutor'];
         $clase = $fila['nombreClase'] ?? 'Clase no especificada';
         $vehiculo = $fila['strVehiculo'] ?? 'Vehiculo no especificado';
@@ -148,6 +142,7 @@ if (!empty($resultado)) {
         $horasPorClase[$clase] += $totalHoras;
 
         $datosFiltrados[] = [
+            'fecha' => $fecha,
             'tutor' => $tutor,
             'clase' => $clase,
             'vehiculo' => $vehiculo,
@@ -156,6 +151,47 @@ if (!empty($resultado)) {
     }
 }
 
+
+// ── Comparativo período anterior ─────────────────────────────────────────────
+$dias = max(1, (new DateTime($fechaSeleccionada))->diff(new DateTime($fechaSeleccionadaFin))->days + 1);
+$fechaAntIni = date('Y-m-d', strtotime($fechaSeleccionada . " -{$dias} days"));
+$fechaAntFin = date('Y-m-d', strtotime($fechaSeleccionadaFin . " -{$dias} days"));
+
+$horasAnterior   = 0;
+$cierresAnterior = 0;
+foreach ($datos as $item) {
+    if (empty($item['dteFecha'])) continue;
+    $f = (new DateTime($item['dteFecha']))->format('Y-m-d');
+    if ($f >= $fechaAntIni && $f <= $fechaAntFin) {
+        $horasAnterior += ($item['intCantHoras'] ?? 0) + (($item['intCantMinutos'] ?? 0) / 60);
+        $cierresAnterior++;
+    }
+}
+$totalCierresActual = count($datosFiltrados);
+$varHoras   = $horasAnterior   > 0 ? (($totalGeneralHoras   - $horasAnterior)   / $horasAnterior   * 100) : null;
+$varCierres = $cierresAnterior > 0 ? (($totalCierresActual  - $cierresAnterior) / $cierresAnterior * 100) : null;
+
+// ── Ranking instructor ────────────────────────────────────────────────────────
+$rankInstructor = [];
+foreach ($datosFiltrados as $f) {
+    $t = $f['tutor'];
+    if (!isset($rankInstructor[$t])) $rankInstructor[$t] = ['cierres' => 0, 'horas' => 0];
+    $rankInstructor[$t]['cierres']++;
+    $rankInstructor[$t]['horas'] += $f['horas'];
+}
+uasort($rankInstructor, function($a, $b) { return $b['horas'] > $a['horas'] ? 1 : ($b['horas'] < $a['horas'] ? -1 : 0); });
+$maxHorasInst = max(array_column($rankInstructor, 'horas') ?: [1]);
+
+// ── Resumen vehículos ─────────────────────────────────────────────────────────
+$rankVehiculo = [];
+foreach ($datosFiltrados as $f) {
+    $v = $f['vehiculo'];
+    if (!isset($rankVehiculo[$v])) $rankVehiculo[$v] = ['cierres' => 0, 'horas' => 0, 'ultima' => ''];
+    $rankVehiculo[$v]['cierres']++;
+    $rankVehiculo[$v]['horas'] += $f['horas'];
+    if ($f['fecha'] > $rankVehiculo[$v]['ultima']) $rankVehiculo[$v]['ultima'] = $f['fecha'];
+}
+uasort($rankVehiculo, function($a, $b) { return $b['horas'] > $a['horas'] ? 1 : ($b['horas'] < $a['horas'] ? -1 : 0); });
 
 // Formato horas
 function formatearHoras($decimal)
@@ -190,7 +226,7 @@ function formatearHoras($decimal)
         display: flex;
     }
 
-     table.dataTable,
+    table.dataTable,
     table.dataTable thead th {
         border: 1px solid rgb(236, 238, 236) !important;
         /* gris claro */
@@ -238,6 +274,11 @@ function formatearHoras($decimal)
         outline: none !important;
         box-shadow: none !important;
     }
+
+    [data-theme="dark"] tfoot tr.bg-light {
+        background-color: #1c2128 !important;
+        color: #c9d1d9 !important;
+    }
 </style>
 
 <main>
@@ -252,18 +293,24 @@ function formatearHoras($decimal)
                 </span>
             </div>
         </div>
+
         <!-- Formulario -->
         <form method="POST" class="mb-4">
             <div class="form-group row">
 
-                <div class="col-md-3 mt-2">
+                <div class="col-md-2 mt-2">
                     <input type="date" name="fecha" id="fecha" class="form-control form-control-sm"
-                        value="<?php echo htmlspecialchars($fechaSeleccionada); ?>" required>
+                        value="<?php echo htmlspecialchars($fechaSeleccionada); ?>" >
+                </div>
+
+                <div class="col-md-2 mt-2">
+                    <input type="date" name="fechaFin" id="fechaFin" class="form-control form-control-sm"
+                        value="<?php echo htmlspecialchars($fechaSeleccionadaFin); ?>" >
                 </div>
 
                 <?php if ($Tipo === 'Administrador'): ?>
 
-                    <div class="col-md-3 mt-2">
+                    <div class="col-md-2 mt-2">
                         <select name="strTutores" class="form-control form-control-sm select-tutores" id="strTutores"
                             placeholder="Tutores">
                             <option value=""></option>
@@ -302,26 +349,75 @@ function formatearHoras($decimal)
 
                 <div class="col-md-2 mt-2 d-flex align-items-center justify-content-between">
                     <button type="submit" class="btn btn-outline-info btn-sm">Filtrar</button>
-                    <div class="col-auto text-end"  id="contenedor-boton"></div>
+                    <div class="col-auto text-end" id="contenedor-boton"></div>
                 </div>
 
             </div>
         </form>
 
-        <!-- Tabla y gráfico -->
-        <div class="card shadow mt-4">
-            <div class="card-header bg-light text-secondary">
-                <h5 class="mb-0 small">
-                    <i class="fas fa-user-clock mr-2 text-success "></i>Cantidad de Clases Por Instructor
-                </h5>
+        <!-- Comparativo período anterior -->
+        <?php if (!empty($datosFiltrados)): ?>
+        <div class="row mb-2 mt-3">
+            <?php
+            function varBadge($val) {
+                if ($val === null) return '<span class="badge badge-secondary">Sin datos anteriores</span>';
+                $cls  = $val >= 0 ? 'success' : 'danger';
+                $icon = $val >= 0 ? 'arrow-trend-up' : 'arrow-trend-down';
+                return "<span class=\"badge badge-{$cls}\"><i class=\"fa-solid fa-{$icon} mr-1\"></i>"
+                     . ($val >= 0 ? '+' : '') . number_format($val, 1) . "% vs período anterior</span>";
+            }
+            ?>
+            <div class="col-6 col-md-3 mb-2">
+                <div class="card shadow-sm text-center py-2 px-1">
+                    <div style="font-size:11px;color:#888">Horas actuales</div>
+                    <div style="font-size:1.4rem;font-weight:700;color:#1ea31a"><?= formatearHoras($totalGeneralHoras) ?></div>
+                    <div class="mt-1"><?= varBadge($varHoras) ?></div>
+                </div>
             </div>
-            <div class="card-body">
+            <div class="col-6 col-md-3 mb-2">
+                <div class="card shadow-sm text-center py-2 px-1">
+                    <div style="font-size:11px;color:#888">Cierres actuales</div>
+                    <div style="font-size:1.4rem;font-weight:700;color:#1a73e8"><?= $totalCierresActual ?></div>
+                    <div class="mt-1"><?= varBadge($varCierres) ?></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+                <div class="card shadow-sm text-center py-2 px-1">
+                    <div style="font-size:11px;color:#888">Período anterior</div>
+                    <div style="font-size:1.4rem;font-weight:700;color:#888"><?= formatearHoras($horasAnterior) ?></div>
+                    <div style="font-size:11px;color:#aaa"><?= $cierresAnterior ?> cierres</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+                <div class="card shadow-sm text-center py-2 px-1">
+                    <div style="font-size:11px;color:#888">Promedio diario</div>
+                    <div style="font-size:1.4rem;font-weight:700;color:#f59e0b">
+                        <?= $dias > 0 ? formatearHoras($totalGeneralHoras / $dias) : '—' ?>
+                    </div>
+                    <div style="font-size:11px;color:#aaa">por día del período</div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Tabla y gráfico -->
+        <div class="card shadow mt-2">
+            <div class="card-header bg-light text-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 small">
+                    <i class="fas fa-user-clock mr-2 text-success"></i>Cantidad de Clases Por Instructor
+                </h5>
+                <button id="btnExportarPDF" class="btn btn-outline-danger btn-sm" style="font-size:11px">
+                    <i class="fa-solid fa-file-pdf mr-1"></i>PDF
+                </button>
+            </div>
+            <div class="card-body" id="grafico" name="grafico">
                 <?php if (!empty($datosPorTutorClase)): ?>
                     <canvas id="graficoHorasTutor" height="100"></canvas>
                     <div class="table-responsive mb-3 mt-4">
                         <table id="tablaClases" class="table table-bordered table-sm text-center small">
                             <thead class="thead-light">
                                 <tr>
+                                    <th>Fecha</th>
                                     <th>Instructor</th>
                                     <th>Tipo Clase</th>
                                     <th>Vehiculo</th>
@@ -331,6 +427,14 @@ function formatearHoras($decimal)
                             <tbody>
                                 <?php foreach ($datosFiltrados as $fila): ?>
                                     <tr>
+                                        <td class="small" <?php
+                                        $fecha = new DateTime($fila['fecha']);
+                                        $orden = $fecha->format('Ymd'); // para ordenar correctamente
+                                        ?>
+                                        data-order="<?= $orden ?>">
+                                            <?= $fecha->format('d/m/Y') ?>
+                                        </td>
+
                                         <td><?= htmlspecialchars($fila['tutor']) ?></td>
                                         <td><?= htmlspecialchars($fila['clase']) ?></td>
                                         <td><?= htmlspecialchars($fila['vehiculo']) ?></td>
@@ -340,7 +444,7 @@ function formatearHoras($decimal)
                             </tbody>
                             <tfoot>
                                 <tr class="bg-light font-weight-bold">
-                                    <td colspan="3" class="text-right">TOTAL</td>
+                                    <td colspan="4" class="text-right">TOTAL</td>
                                     <td><?= formatearHoras($totalGeneralHoras) ?></td>
                                 </tr>
                             </tfoot>
@@ -352,11 +456,107 @@ function formatearHoras($decimal)
                 <?php endif; ?>
             </div>
         </div>
+        <!-- Ranking Instructores -->
+        <?php if (!empty($rankInstructor)): ?>
+        <div class="card shadow mt-3">
+            <div class="card-header bg-light text-secondary small">
+                <i class="fa-solid fa-ranking-star mr-1 text-warning"></i> Ranking de Instructores
+            </div>
+            <div class="card-body p-2">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0" style="font-size:13px">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Instructor</th>
+                                <th class="text-center">Cierres</th>
+                                <th class="text-center">Horas</th>
+                                <th style="min-width:120px">Progreso</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php $pos = 1; foreach ($rankInstructor as $nombre => $datos): ?>
+                            <tr>
+                                <td>
+                                    <?php if ($pos === 1): ?>
+                                        <i class="fa-solid fa-trophy text-warning"></i>
+                                    <?php elseif ($pos === 2): ?>
+                                        <i class="fa-solid fa-medal" style="color:#aaa"></i>
+                                    <?php elseif ($pos === 3): ?>
+                                        <i class="fa-solid fa-medal" style="color:#cd7f32"></i>
+                                    <?php else: ?>
+                                        <span class="text-muted"><?= $pos ?></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= htmlspecialchars($nombre) ?></td>
+                                <td class="text-center"><?= $datos['cierres'] ?></td>
+                                <td class="text-center font-weight-bold"><?= formatearHoras($datos['horas']) ?></td>
+                                <td>
+                                    <div class="progress" style="height:8px;border-radius:4px">
+                                        <div class="progress-bar bg-success" style="width:<?= $maxHorasInst > 0 ? round($datos['horas']/$maxHorasInst*100) : 0 ?>%"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php $pos++; endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Resumen Vehículos -->
+        <?php if (!empty($rankVehiculo)): ?>
+        <div class="card shadow mt-3 mb-4">
+            <div class="card-header bg-light text-secondary small">
+                <i class="fa-solid fa-car mr-1 text-info"></i> Resumen de Vehículos
+            </div>
+            <div class="card-body p-2">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0" style="font-size:13px">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Placa</th>
+                                <th class="text-center">Cierres</th>
+                                <th class="text-center">Horas totales</th>
+                                <th class="text-center">Último uso</th>
+                                <th style="min-width:120px">Uso relativo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php
+                        $maxHorasVeh = max(array_column($rankVehiculo, 'horas') ?: [1]);
+                        foreach ($rankVehiculo as $placa => $vd):
+                        ?>
+                            <tr>
+                                <td class="font-weight-bold"><?= htmlspecialchars($placa) ?></td>
+                                <td class="text-center"><?= $vd['cierres'] ?></td>
+                                <td class="text-center"><?= formatearHoras($vd['horas']) ?></td>
+                                <td class="text-center text-muted">
+                                    <?= $vd['ultima'] ? (new DateTime($vd['ultima']))->format('d/m/Y') : '—' ?>
+                                </td>
+                                <td>
+                                    <div class="progress" style="height:8px;border-radius:4px">
+                                        <div class="progress-bar" style="width:<?= $maxHorasVeh > 0 ? round($vd['horas']/$maxHorasVeh*100) : 0 ?>%;background:#17a2b8"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
     </div>
 </main>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<!-- PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
 
@@ -434,101 +634,173 @@ function formatearHoras($decimal)
 <?php include '../plantilla/pie.php'; ?>
 <script>
 
-    $(document).ready(function () {
-        $('.select-vehiculo').select2({
-            placeholder: "Ninguno",
-            allowClear: true,
-            width: '100%',
-            language: {
-                noResults: function () {
-                    return "No existe";
-                },
-                removeAllItems: function () {
-                    return "Eliminar";
-                },
-                removeItem: function () {
-                    return "Eliminar";
-                }
+$(document).ready(function () {
+
+    // inicializar DataTable UNA sola vez
+    var tabla = $('#tablaClases').DataTable({
+        language: {
+            "decimal": "",
+            "emptyTable": "No hay información disponible",
+            "info": "_START_ de _END_ Registros",
+            "infoEmpty": "0 a 0 de 0 Registros",
+            "infoFiltered": "(_MAX_ Filtrados)",
+            "lengthMenu": "Mostrar _MENU_",
+            "loadingRecords": "Cargando...",
+            "processing": "Procesando...",
+            "search": "Buscar",
+            "zeroRecords": "No se encontraron coincidencias",
+            "paginate": {
+                "first": "<<",
+                "last": ">>",
+                "next": ">",
+                "previous": "<"
             }
-        });
-    });
+        },
+        responsive: true,
+        order: [[0, 'desc']],
+        pagingType: "first_last_numbers",
+        buttons: [{
+            extend: 'excelHtml5',
+            text: 'Exportar',
+            className: 'btn btn-secondary btn-sm',
+            action: function (e, dt, button, config) {
 
-    $(document).ready(function () {
-        $('.select-tutores').select2({
-            placeholder: "Ninguno",
-            allowClear: true,
-            width: '100%',
-            language: {
-                noResults: function () {
-                    return "No existe";
-                },
-                removeAllItems: function () {
-                    return "Eliminar";
-                },
-                removeItem: function () {
-                    return "Eliminar";
+                var filas = dt.rows({ search: 'applied' }).count();
+
+                // Si no hay registros
+                if (filas === 0) {
+                    alertify.message("No hay datos para exportar.");
+                    return;
                 }
+
+                var self = this;
+                var originalAction = $.fn.dataTable.ext.buttons.excelHtml5.action;
+
+                alertify.confirm(
+                    'Confirmación',
+                    '¿Desea exportar los datos a Excel?',
+                    function () {
+                        originalAction.call(self, e, dt, button, config);
+                        alertify.success('Exportando...');
+                    },
+                    function () {}
+                ).set('labels', { ok: 'Guardar', cancel: 'Cancelar' });
+
             }
-        });
+        }]
+    });
+
+    tabla.buttons().container().appendTo('#contenedor-boton');
+
+    // ── Exportar PDF ──────────────────────────────────────────────────────────
+    $('#btnExportarPDF').on('click', function () {
+        var btn = $(this).prop('disabled', true).text('Generando...');
+        html2canvas(document.getElementById('grafico'), { scale: 1.5, useCORS: true })
+            .then(function (canvas) {
+                var { jsPDF } = window.jspdf;
+                var pdf = new jsPDF('landscape', 'mm', 'a4');
+                var imgW = 280;
+                var imgH = canvas.height * imgW / canvas.width;
+                pdf.setFontSize(11);
+                pdf.text('Indicadores — generado el <?= date('d/m/Y H:i') ?>', 10, 10);
+                pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 16, imgW, imgH);
+                pdf.save('indicadores_<?= date('Ymd') ?>.pdf');
+                btn.prop('disabled', false).html('<i class="fa-solid fa-file-pdf mr-1"></i>PDF');
+            });
     });
 
 
-    // DataTable
-    $(document).ready(function () {
-        var tabla = $('#tablaClases').DataTable({
-            language: {
-                "decimal": "",
-                "emptyTable": "No hay información disponible",
-                "info": "_START_ de _END_ Registros",
-                "infoEmpty": "0 a 0 de 0 Registros",
-                "infoFiltered": "(_MAX_ Filtrados)",
-                "lengthMenu": "Mostrar _MENU_",
-                "loadingRecords": "Cargando...",
-                "processing": "Procesando...",
-                "search": "Buscar  ",
-                "zeroRecords": "No se encontraron coincidencias",
-                "paginate": {
-                    "first": "<<",
-                    "last": ">>",
-                    "next": ">",
-                    "previous": "<"
-                },
-                "aria": {
-                    "sortAscending": ": activar para ordenar ascendente",
-                    "sortDescending": ": activar para ordenar descendente"
-                }
-            },
-            responsive: true,
-            order: [[0, 'desc']],
-            pagingType: "first_last_numbers",
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    text: 'Exportar',
-                    className: 'btn btn-secondary btn-sm',
-                    action: function (e, dt, button, config) {
-                        var self = this; // guardar contexto
-                        var originalAction = $.fn.dataTable.ext.buttons.excelHtml5.action;
+    // Select2
+    $('.select-vehiculo').select2({
+        placeholder: "Ninguno",
+        allowClear: true,
+        width: '100%'
+    });
 
-                        alertify.confirm(
-                            'Confirmación',
-                            '¿Desea exportar los datos a Excel?',
-                            function () { // OK
-                                originalAction.call(self, e, dt, button, config);
-                                alertify.success('Exportando...');
-                            },
-                            function () { // Cancelar
-
-                            }
-                        ).set('labels', { ok: 'Guardar', cancel: 'Cancelar' });
-                    }
-                }
-            ]
-        });
-
-        tabla.buttons().container().appendTo('#contenedor-boton');
+    $('.select-tutores').select2({
+        placeholder: "Ninguno",
+        allowClear: true,
+        width: '100%'
     });
 
 
+    // Cambio fecha inicio
+    $('#fecha').on('change', function () {
+
+        let fechaInicio = $(this).val();
+
+        $('#fechaFin').attr('min', fechaInicio);
+
+        if ($('#fechaFin').val() < fechaInicio) {
+
+            $('#fechaFin').val('');
+
+            $('#grafico').empty();
+
+            tabla.clear().draw();
+
+        }
+
+    });
+
+
+    // Cambio fecha fin
+    $('#fechaFin').on('change', function () {
+
+        let fechaInicio = $('#fecha').val();
+        let fechaFin = $(this).val();
+
+        if (fechaFin < fechaInicio) {
+
+            alertify.warning("La fecha final no puede ser menor que la fecha inicial.");
+
+            $(this).val('');
+
+            $('#grafico').empty();
+
+            tabla.clear().draw();
+
+            $(this).focus();
+
+        }
+
+    });
+
+
+    // Validación al enviar
+    $('form').on('submit', function (e) {
+
+        let fechaInicio = $('#fecha').val();
+        let fechaFin = $('#fechaFin').val();
+
+        if (!fechaInicio || !fechaFin) {
+
+            e.preventDefault();
+
+            alertify.warning("Por favor, complete ambas fechas.");
+
+            return false;
+
+        }
+
+        if (fechaFin < fechaInicio) {
+
+            e.preventDefault();
+
+            alertify.warning("La fecha de fin no puede ser anterior a la fecha de inicio.");
+
+            $('#grafico').empty();
+
+            tabla.clear().draw();
+
+            $('#fechaFin').focus();
+
+            return false;
+
+        }
+
+    });
+
+});
 
 </script>
